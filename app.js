@@ -61,7 +61,11 @@ const PLACES=[
 const CATS={sight:{label:"Sights",color:"#c0392b"},eat:{label:"Food & drink",color:"#d68910"},club:{label:"Clubs",color:"#7d3c98"},stay:{label:"Where to stay",color:"#1f7a5c"}};
 const $=id=>document.getElementById(id);
 const map=L.map("map").setView([50.0875,14.4213],13);
-L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{maxZoom:19,subdomains:"abcd",attribution:"© OpenStreetMap contributors © CARTO"}).addTo(map);
+const clean=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Tiles © Esri"});
+const osm=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"});
+clean.addTo(map);
+let swapped=false;clean.on("tileerror",()=>{if(!swapped){swapped=true;map.removeLayer(clean);osm.addTo(map);}});
+L.control.layers({"Clean map":clean,"OpenStreetMap":osm},null,{position:"bottomright"}).addTo(map);
 const on=new Set(Object.keys(CATS)),mk={};let q="",sel=null;
 PLACES.forEach(p=>{mk[p.id]=L.circleMarker([p.lat,p.lng],{radius:8,color:"#fff",weight:2,fillColor:CATS[p.cat].color,fillOpacity:.95}).bindTooltip(p.name).on("click",()=>select(p.id,false));});
 const vis=p=>on.has(p.cat)&&(!q||(p.name+" "+p.summary).toLowerCase().includes(q));
