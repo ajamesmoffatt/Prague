@@ -1,8 +1,20 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pub crawl – The Coast of Bohemia</title><link rel="stylesheet" href="style.css">
-<link rel="icon" type="image/png" href="favicon-32x32.png">
+<title>Pub crawl – The Coast of Bohemia</title><link rel="icon" type="image/png" href="favicon-32x32.png">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
+.vt{display:inline-flex;border:1px solid rgba(128,128,128,.45);border-radius:999px;overflow:hidden;margin:6px 0 4px}
+.vt button{font:inherit;font-weight:600;padding:7px 20px;border:0;background:transparent;color:inherit;cursor:pointer}
+.vt button.on{background:#c58b1f;color:#fff}
+.tmap{display:none;height:min(72vh,600px);border-radius:10px;margin:14px 0;border:1px solid rgba(128,128,128,.35)}
+.showmap .tmap{display:block}.showmap .listview{display:none}
+.tpin{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#c58b1f;color:#fff;font:700 13px system-ui,sans-serif;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45)}
+.tpin.alt{background:#6b6b6b}
+.num{display:inline-flex;align-items:center;justify-content:center;width:1.5em;height:1.5em;border-radius:50%;background:#c58b1f;color:#fff;font-size:.8rem;font-weight:700;margin-right:.5em;vertical-align:.1em}
+.tmap a{color:#8a5d00}
+
 .stop{border-left:3px solid #c58b1f;padding:2px 0 2px 16px;margin:22px 0}
 .stop h3{margin:0 0 2px}
 .meta{color:var(--mut);font-size:.9rem;margin:0 0 6px}
@@ -22,16 +34,19 @@
 <h2>Pub crawl: Old Town to New Town (pub golf)</h2>
 <p class="intro">Eight stops, about 4–5 hours, walking between them (all under ten minutes). Each stop has a <b>par</b>: the number of sips to finish your drink. Count your sips, add them up, and the lowest score wins. It’s deliberately weighted towards local beer and Czech spirits. Click any stop to see it on the map. Prices are rough guides: Czech beer is cheap, central cocktails are not.</p>
 <p class="meta">Short version (five holes): stops 1, 3, 5, 7 and 8. The strong beer at stop 5 is a half-way slowdown, not a challenge. Eat before you start, and drink water between stops.</p>
-<div class="scroll"><table class="tbl"><thead><tr><th>#</th><th>Stop</th><th>Order</th><th>Par</th><th>Rule</th><th>Cost</th></tr></thead><tbody>
-<tr><td>1</td><td><a href="index.html#lokal-dlouha">Lokál Dlouhá</a></td><td>Half-litre Pilsner from the tank. Ask for a hladinka (with a creamy head).</td><td>4</td><td>Drink it in 4 sips. Say “Jedno pivo, prosím.”</td><td>≈60–90kč</td></tr>
-<tr><td>2</td><td><a href="index.html#bokovka">Bokovka</a></td><td>A glass of Moravian white wine. Ask for what the cellar recommends.</td><td>3</td><td>3 sips; no pub-golf rushing here, the room is nice.</td><td>≈100–180kč</td></tr>
-<tr><td>3</td><td><a href="index.html#black-angels">Black Angel’s Bar</a></td><td>A cocktail made with a Czech spirit (Becherovka, slivovice). Ask the bartender to choose.</td><td>3</td><td>3 sips. Reserve ahead at busy times; it’s one of the best bars in town.</td><td>≈250–350kč</td></tr>
-<tr><td>4</td><td><a href="index.html#popocafepetl">Popocafepetl</a></td><td>The cheapest drink on the menu. A shot, or the house beer.</td><td>1</td><td>One go. Cash only; it’s a loud student bar.</td><td>≈50–100kč</td></tr>
-<tr><td>5</td><td><a href="index.html#u-medvidku">U Medvídků</a></td><td>X-BEER 33, the strong house beer, around 12% ABV. Share it, or order a small one.</td><td>5</td><td>Take your time. This is the one that catches people out.</td><td>≈150kč for a small glass</td></tr>
-<tr><td>6</td><td><a href="index.html#tygra">U Zlatého tygra</a></td><td>Tapped Pilsner at Havel’s old table.</td><td>4</td><td>4 sips. Note the photos on the wall.</td><td>≈70–100kč</td></tr>
-<tr><td>7</td><td><a href="index.html#hemingway">Hemingway Bar</a></td><td>Absinthe or a rum cocktail. Rum and absinthe are the specialities.</td><td>2</td><td>2 sips; dim, slow, and worth the price.</td><td>≈220–300kč</td></tr>
-<tr><td>8</td><td><a href="index.html#u-fleku">U Fleků</a></td><td>The house dark lager (Flekovský tmavý 13°), brewed here for centuries.</td><td>4</td><td>4 sips. It’s a Czech beer hall institution.</td><td>≈90–120kč</td></tr>
-</tbody></table></div>
+<div class="vt" role="group" aria-label="View"><button id="vl" class="on" type="button">List</button><button id="vm" type="button">Map</button></div>
+<div id="tmap" class="tmap"></div>
+<p class="meta" id="tnote" hidden>Dotted line = order of stops (straight lines, not street routes). Tap a pin for details. Grey pins = optional finishing venues.</p>
+<div class="listview"><div class="scroll"><table class="tbl"><thead><tr><th>#</th><th>Stop</th><th>Order</th><th>Par</th><th>Rule</th><th>Cost</th></tr></thead><tbody>
+<tr id="s1"><td>1</td><td><a href="index.html#lokal-dlouha">Lokál Dlouhá</a></td><td>Half-litre Pilsner from the tank. Ask for a hladinka (with a creamy head).</td><td>4</td><td>Drink it in 4 sips. Say “Jedno pivo, prosím.”</td><td>≈60–90kč</td></tr>
+<tr id="s2"><td>2</td><td><a href="index.html#bokovka">Bokovka</a></td><td>A glass of Moravian white wine. Ask for what the cellar recommends.</td><td>3</td><td>3 sips; no pub-golf rushing here, the room is nice.</td><td>≈100–180kč</td></tr>
+<tr id="s3"><td>3</td><td><a href="index.html#black-angels">Black Angel’s Bar</a></td><td>A cocktail made with a Czech spirit (Becherovka, slivovice). Ask the bartender to choose.</td><td>3</td><td>3 sips. Reserve ahead at busy times; it’s one of the best bars in town.</td><td>≈250–350kč</td></tr>
+<tr id="s4"><td>4</td><td><a href="index.html#popocafepetl">Popocafepetl</a></td><td>The cheapest drink on the menu. A shot, or the house beer.</td><td>1</td><td>One go. Cash only; it’s a loud student bar.</td><td>≈50–100kč</td></tr>
+<tr id="s5"><td>5</td><td><a href="index.html#u-medvidku">U Medvídků</a></td><td>X-BEER 33, the strong house beer, around 12% ABV. Share it, or order a small one.</td><td>5</td><td>Take your time. This is the one that catches people out.</td><td>≈150kč for a small glass</td></tr>
+<tr id="s6"><td>6</td><td><a href="index.html#tygra">U Zlatého tygra</a></td><td>Tapped Pilsner at Havel’s old table.</td><td>4</td><td>4 sips. Note the photos on the wall.</td><td>≈70–100kč</td></tr>
+<tr id="s7"><td>7</td><td><a href="index.html#hemingway">Hemingway Bar</a></td><td>Absinthe or a rum cocktail. Rum and absinthe are the specialities.</td><td>2</td><td>2 sips; dim, slow, and worth the price.</td><td>≈220–300kč</td></tr>
+<tr id="s8"><td>8</td><td><a href="index.html#u-fleku">U Fleků</a></td><td>The house dark lager (Flekovský tmavý 13°), brewed here for centuries.</td><td>4</td><td>4 sips. It’s a Czech beer hall institution.</td><td>≈90–120kč</td></tr>
+</tbody></table></div></div>
 <p>Total par: 26 across all eight. Add up the sips you actually took and subtract par for your score.</p>
 <h2>Finish</h2>
 <p>Pick one: <a href="index.html#chapeau">Chapeau Rouge</a> (student basement, close by); <a href="index.html#karlovy-lazne">Karlovy Lázně</a> (huge and touristy, five floors); <a href="index.html#reduta">Reduta Jazz Club</a> (live jazz, intimate); or <a href="index.html#lucerna">Lucerna Music Bar</a> (live bands). Check entry and cover on the night.</p>
@@ -45,4 +60,38 @@
 <li><b>Pace yourself:</b> this is a lot of drinks. Skip stops, share the strong beer, and never leave your drink unattended.</li>
 <li><b>Other crawl options:</b> the Drunken Monkey Bar Crawl is promoted by <a href="index.html#bunker">Hostel Bunker Factory</a> (English speakers, good for meeting people).</li></ul>
 <p style="color:var(--mut);font-size:.9rem;margin-top:30px">Prices are rough guides and change. Opening hours too: check before you go.</p>
-</main></body></html>
+</main>
+<script>
+(function(){
+var STOPS=[{"n": 1, "id": "lokal-dlouha", "t": "Lokál Dlouhá", "info": "Order: Half-litre Pilsner from the tank. Ask for a hladinka (with a creamy head). · Par 4", "lat": 50.0898, "lng": 14.4252}, {"n": 2, "id": "bokovka", "t": "Bokovka", "info": "Order: A glass of Moravian white wine. Ask for what the cellar recommends. · Par 3", "lat": 50.0896, "lng": 14.4256}, {"n": 3, "id": "black-angels", "t": "Black Angel’s Bar", "info": "Order: A cocktail made with a Czech spirit (Becherovka, slivovice). Ask the bartender to choose. · Par 3", "lat": 50.0873, "lng": 14.4205}, {"n": 4, "id": "popocafepetl", "t": "Popocafepetl", "info": "Order: The cheapest drink on the menu. A shot, or the house beer. · Par 1", "lat": 50.0856, "lng": 14.4196}, {"n": 5, "id": "u-medvidku", "t": "U Medvídků", "info": "Order: X-BEER 33, the strong house beer, around 12% ABV. Share it, or order a small one. · Par 5", "lat": 50.082, "lng": 14.4185}, {"n": 6, "id": "tygra", "t": "U Zlatého tygra", "info": "Order: Tapped Pilsner at Havel’s old table. · Par 4", "lat": 50.0848, "lng": 14.4168}, {"n": 7, "id": "hemingway", "t": "Hemingway Bar", "info": "Order: Absinthe or a rum cocktail. Rum and absinthe are the specialities. · Par 2", "lat": 50.0831, "lng": 14.4147}, {"n": 8, "id": "u-fleku", "t": "U Fleků", "info": "Order: The house dark lager (Flekovský tmavý 13°), brewed here for centuries. · Par 4", "lat": 50.0798, "lng": 14.4172}],EXTRA=[{"id": "chapeau", "t": "Chapeau Rouge", "lat": 50.0845, "lng": 14.4181}, {"id": "karlovy-lazne", "t": "Karlovy Lázně", "lat": 50.0856, "lng": 14.4129}, {"id": "reduta", "t": "Reduta Jazz Club", "lat": 50.0814, "lng": 14.4161}, {"id": "lucerna", "t": "Lucerna Music Bar", "lat": 50.0815, "lng": 14.4252}],map,built=false,b=document.body;
+function build(){
+  if(built)return;built=true;
+  map=L.map("tmap",{scrollWheelZoom:false});
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(map);
+  var pts=STOPS.map(function(s){return [s.lat,s.lng]});
+  L.polyline(pts,{color:"#c58b1f",weight:3,dashArray:"2 8",lineCap:"round"}).addTo(map);
+  STOPS.forEach(function(s){
+    L.marker([s.lat,s.lng],{icon:L.divIcon({className:"",html:'<div class="tpin">'+s.n+'</div>',iconSize:[26,26],iconAnchor:[13,13]})})
+     .addTo(map).bindPopup("<b>"+s.n+". "+s.t+"</b><br>"+s.info+'<br><a href="#s'+s.n+'" data-jump="s'+s.n+'">Jump to stop</a> · <a href="index.html#'+s.id+'">Open on main map</a>');
+  });
+  EXTRA.forEach(function(s){
+    L.marker([s.lat,s.lng],{icon:L.divIcon({className:"",html:'<div class="tpin alt">F</div>',iconSize:[26,26],iconAnchor:[13,13]})})
+     .addTo(map).bindPopup("<b>"+s.t+"</b><br>Optional finish<br><a href=\"index.html#"+s.id+"\">Open on main map</a>");
+    pts.push([s.lat,s.lng]);
+  });
+  map.fitBounds(pts,{padding:[30,30]});
+}
+function show(m){
+  b.classList.toggle("showmap",m);
+  document.getElementById("vm").classList.toggle("on",m);document.getElementById("vl").classList.toggle("on",!m);
+  document.getElementById("tnote").hidden=!m;
+  if(m){build();setTimeout(function(){map.invalidateSize();},0);}
+  history.replaceState(null,"",m?"#map":location.pathname);
+}
+document.getElementById("vm").onclick=function(){show(true)};
+document.getElementById("vl").onclick=function(){show(false)};
+document.addEventListener("click",function(e){var a=e.target.closest("[data-jump]");if(!a)return;e.preventDefault();show(false);var t=document.getElementById(a.getAttribute("data-jump"));if(t)t.scrollIntoView({block:"center"});});
+if(location.hash==="#map")show(true);
+})();
+</script>
+</body></html>
