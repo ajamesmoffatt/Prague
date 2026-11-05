@@ -179,9 +179,12 @@ const on=new Set(Object.keys(CATS)),mk={};let q="",sel=null;
 PLACES.forEach(p=>{mk[p.id]=L.circleMarker([p.lat,p.lng],{radius:8,color:"#fff",weight:2,fillColor:CATS[p.cat].color,fillOpacity:.95}).bindTooltip(p.name).on("click",()=>select(p.id,false));});
 const vis=p=>on.has(p.cat)&&(!q||(p.name+" "+p.summary).toLowerCase().includes(q));
 function render(){
+  const dd=$("detail");$("side").insertBefore(dd,$("list"));
   $("filters").innerHTML=Object.keys(CATS).map(k=>`<button class="chip${on.has(k)?"":" off"}" data-k="${k}"><i style="background:${CATS[k].color}"></i>${CATS[k].label}</button>`)+`<button class="chip${metroOn?"":" off"}" data-metro="1"><i style="background:linear-gradient(90deg,#2e9e4f 33%,#e8b800 33% 66%,#d3322d 66%)"></i>Metro</button>`;
   $("list").innerHTML=Object.keys(CATS).map(k=>{const r=PLACES.filter(p=>p.cat===k&&vis(p));
     return r.length?`<div class="grp">${CATS[k].label}</div>`+r.map(p=>`<div class="row${p.id===sel?" on":""}" data-id="${p.id}"><i style="background:${CATS[k].color}"></i><div><b>${p.name}</b><span>${p.summary}</span></div></div>`).join(""):"";}).join("");
+  const row=sel?$("list").querySelector('.row[data-id="'+sel+'"]'):null;
+  dd.hidden=!row;if(row)row.after(dd);
   PLACES.forEach(p=>{const m=mk[p.id];vis(p)?m.addTo(map):m.remove();m.setStyle({radius:p.id===sel?12:8});});
 }
 function select(id,fly=true){
@@ -190,19 +193,21 @@ function select(id,fly=true){
   if(p.wiki)links.push(`<a href="${p.wiki}" target="_blank" rel="noopener">Wikipedia ↗</a>`);
   links.push(`<a href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}" target="_blank" rel="noopener">Google Maps ↗</a>`);
   if(p.website)links.push(`<a href="${p.website}" target="_blank" rel="noopener">Website ↗</a>`);
-  const side=$("side"),keep=side.scrollTop,oldH=d.hidden?0:d.offsetHeight;
-  d.hidden=false;
+  const side=$("side"),r0=$("list").querySelector('.row[data-id="'+id+'"]'),top0=r0?r0.getBoundingClientRect().top:null;
   d.innerHTML=`<span class="tag" style="color:${CATS[p.cat].color}">${CATS[p.cat].label}</span><h2>${p.name}</h2><p>${p.summary}</p>`+
     (p.details?p.details.split("\n\n").map(t=>`<p>${t}</p>`).join(""):"")+(p.cost?`<p class="cost">${p.cost}</p>`:"")+(p.approx?`<p class="cost">📍 Pin position approximate</p>`:"")+`<p class="links">${links.join("")}</p>`;
   render();
-  // keep the list exactly where it was: only compensate for the detail panel changing height above it
-  side.scrollTop=keep+(d.offsetHeight-oldH);
-  Object.values(mk).forEach(m=>m.unbindPopup());
-  mk[id].bindPopup(`<b>${p.name}</b><br>${p.summary}`+(p.cost?`<br><i>${p.cost}</i>`:"")+`<br>${links.join(" · ")}`,{maxWidth:280}).openPopup();
+  // the expanded box opens under the clicked row; keep that row exactly where it was on screen
+  const r1=$("list").querySelector('.row[data-id="'+id+'"]');
+  if(r1){
+    if(top0!==null)side.scrollTop+=r1.getBoundingClientRect().top-top0;
+    const sb=side.getBoundingClientRect(),rb=r1.getBoundingClientRect();
+    if(top0===null||rb.top<sb.top||rb.top>sb.bottom)r1.scrollIntoView({block:"start"});
+  }
   if(fly)map.flyTo([p.lat,p.lng],Math.max(map.getZoom(),15),{duration:.6});
 }
 $("filters").onclick=e=>{const m=e.target.closest("[data-metro]");if(m){metroOn=!metroOn;metroOn?metroLayer.addTo(map):map.removeLayer(metroLayer);render();return;}const b=e.target.closest("[data-k]");if(!b)return;on.has(b.dataset.k)?on.delete(b.dataset.k):on.add(b.dataset.k);render();};
-$("list").onclick=e=>{const r=e.target.closest("[data-id]");if(r)select(r.dataset.id);};
+$("list").onclick=e=>{const r=e.target.closest("[data-id]");if(!r)return;if(r.dataset.id===sel){sel=null;history.replaceState(null,"",location.pathname);render();}else select(r.dataset.id);};
 $("q").oninput=e=>{q=e.target.value.toLowerCase();render();};
 render();
 if(location.hash)select(location.hash.slice(1));
