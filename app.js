@@ -190,10 +190,15 @@ function select(id,fly=true){
   if(p.wiki)links.push(`<a href="${p.wiki}" target="_blank" rel="noopener">Wikipedia ↗</a>`);
   links.push(`<a href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}" target="_blank" rel="noopener">Google Maps ↗</a>`);
   if(p.website)links.push(`<a href="${p.website}" target="_blank" rel="noopener">Website ↗</a>`);
+  const side=$("side"),keep=side.scrollTop,oldH=d.hidden?0:d.offsetHeight;
   d.hidden=false;
   d.innerHTML=`<span class="tag" style="color:${CATS[p.cat].color}">${CATS[p.cat].label}</span><h2>${p.name}</h2><p>${p.summary}</p>`+
     (p.details?p.details.split("\n\n").map(t=>`<p>${t}</p>`).join(""):"")+(p.cost?`<p class="cost">${p.cost}</p>`:"")+(p.approx?`<p class="cost">📍 Pin position approximate</p>`:"")+`<p class="links">${links.join("")}</p>`;
-  render();$("side").scrollTop=0;
+  render();
+  // keep the list exactly where it was: only compensate for the detail panel changing height above it
+  side.scrollTop=keep+(d.offsetHeight-oldH);
+  Object.values(mk).forEach(m=>m.unbindPopup());
+  mk[id].bindPopup(`<b>${p.name}</b><br>${p.summary}`+(p.cost?`<br><i>${p.cost}</i>`:"")+`<br>${links.join(" · ")}`,{maxWidth:280}).openPopup();
   if(fly)map.flyTo([p.lat,p.lng],Math.max(map.getZoom(),15),{duration:.6});
 }
 $("filters").onclick=e=>{const m=e.target.closest("[data-metro]");if(m){metroOn=!metroOn;metroOn?metroLayer.addTo(map):map.removeLayer(metroLayer);render();return;}const b=e.target.closest("[data-k]");if(!b)return;on.has(b.dataset.k)?on.delete(b.dataset.k):on.add(b.dataset.k);render();};
